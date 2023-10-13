@@ -76,3 +76,41 @@ pub mod filling{
         Ok(metadata.len()) // len of data
     }
 }
+
+
+//?                                                           TESTING
+use crate::filling::filling::write_to_file;
+use crate::filling::filling::read_file;
+use crate::filling::filling::get_file_size;
+#[cfg(test)]
+mod tests {
+    use super::*; 
+
+    #[test]
+    fn test_write_and_read_file() {
+        let filename = "test.txt";
+        let data = vec![(3, 4), (1, 2)]; // (aaabbbb) , (abb)
+
+        write_to_file(filename, &data).expect("Failed to write to file");
+
+        let mut compressed = String::new();
+        read_file(filename, &mut compressed).expect("Failed to read file");
+
+        // Assert that the compressed content matches the original data
+        //assert_eq!(compressed, "aaabbbab");
+        assert_eq!(compressed, "abab");
+    }
+
+    #[test]
+    fn test_get_file_size() {
+        let filename = "test.txt";
+        let data = vec![(3, 4), (1, 2)];
+
+        write_to_file(filename, &data).expect("Failed to write to file");
+
+        let file_size = get_file_size(filename).expect("Failed to get file size");
+
+        // Assert that the file size matches the expected size
+        assert_eq!(file_size, 10); // Update this value based on your expectations
+    }
+}

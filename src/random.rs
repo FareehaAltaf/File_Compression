@@ -12,3 +12,12 @@ pub mod random{
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_gen_random_ab() {
+        let list = random::gen_random_ab();
+        assert_eq!(list.len(), 10);
+    }
+}
