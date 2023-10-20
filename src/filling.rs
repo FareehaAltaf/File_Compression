@@ -51,6 +51,7 @@ pub mod filling{
                 count_a += 1;
             }
             else if c == 'b' && flag_prev_was_a { // change in letter (a => b) 
+                compressed.push_str(count_a.to_string().as_str()); // push the count of a
                 compressed.push_str("b");
                 flag_prev_was_a = false;
                 count_b += 1;
@@ -58,6 +59,7 @@ pub mod filling{
                 count_a = 0;
             }
             else if c == 'a' && !flag_prev_was_a { // change in letter (b => a)
+                compressed.push_str(count_b.to_string().as_str()); // push the count of b
                 compressed.push_str("a");
                 flag_prev_was_a = true;
                 count_a += 1;
@@ -68,6 +70,8 @@ pub mod filling{
                 count_b += 1;
             }
         }
+        compressed.push_str(count_b.to_string().as_str()); // push the count of last b
+        println!("There were {} b's", count_b);
         Ok(())
     }
 
@@ -75,42 +79,118 @@ pub mod filling{
         let metadata = fs::metadata(filename)?;  
         Ok(metadata.len()) // len of data
     }
-}
 
+    pub fn decompress(filename: &str, decompressed_str: &mut String) -> std::io::Result<()> {
+		let mut file = File::open(filename)?;
+        let mut contents = String::new();
 
-//?                                                           TESTING
-use crate::filling::filling::write_to_file;
+        file.read_to_string(&mut contents)?;
+
+        println!("compressed file: {}", contents);
+
+        // go through each charater of the contents
+        let char_contents = contents.chars();
+
+		// let mut character: char = 'a';
+		let mut prev: char = 'a';
+
+		let mut num = "0".to_string();
+		//num = "0".to_string();
+
+		//decompressed_str = "";
+
+		for c in char_contents {
+			
+			if c == 'a' && prev == num.chars().last().unwrap() { // if i reach a and prev was a number
+				for _ in 0..num.parse::<u32>().unwrap() { // write that many b's in the decompressed string
+					decompressed_str.push_str('b'.to_string().as_str());
+				}
+				// character = 'a';
+				num.clear();
+			}
+			else if c == 'b' && prev == num.chars().last().unwrap() { // if i reach b and prev was a number
+				for _ in 0..num.parse::<u32>().unwrap() { // write that many a's in the decompressed string
+					decompressed_str.push_str('a'.to_string().as_str());
+				}
+				// character = 'b';
+				num.clear();
+			}
+			else if c.is_digit(10) {
+				// store the number
+				// this could be the first digit of a 2 digit number.
+				//   or the 2nd digit of a 2 digit number
+				//   or a single digit number
+				num.push_str(c.to_string().as_str()); 
+			}
+			prev = c;
+		}
+		// at the end there will defo be a num stored for the last b's
+		for _ in 0..num.parse::<u32>().unwrap() { // write that many b's in the decompressed string
+			decompressed_str.push_str('b'.to_string().as_str());
+		}
+
+		println!("\ndecompressed file: {}", decompressed_str);
+
+		let mut file = File::create("decompressed.txt").expect("Unable to create file");
+		file.write_all(decompressed_str.as_bytes()).expect("Unable to write to file");
+
+		Ok(())
+        
+	}
+ }
+
+ #[cfg(test)]
+pub mod tests {
+use crate::random::random::gen_random_ab;
 use crate::filling::filling::read_file;
-use crate::filling::filling::get_file_size;
-#[cfg(test)]
-mod tests {
-    use super::*; 
-
-    #[test]
-    fn test_write_and_read_file() {
-        let filename = "test.txt";
-        let data = vec![(3, 4), (1, 2)]; // (aaabbbb) , (abb)
-
-        write_to_file(filename, &data).expect("Failed to write to file");
-
-        let mut compressed = String::new();
-        read_file(filename, &mut compressed).expect("Failed to read file");
-
-        // Assert that the compressed content matches the original data
-        //assert_eq!(compressed, "aaabbbab");
-        assert_eq!(compressed, "abab");
-    }
-
-    #[test]
-    fn test_get_file_size() {
-        let filename = "test.txt";
-        let data = vec![(3, 4), (1, 2)];
-
-        write_to_file(filename, &data).expect("Failed to write to file");
-
-        let file_size = get_file_size(filename).expect("Failed to get file size");
-
-        // Assert that the file size matches the expected size
-        assert_eq!(file_size, 10); // Update this value based on your expectations
-    }
-}
+use crate::filling::filling::write_to_file;
+use crate::filling::filling::decompress;
+use std::io::Write;
+use std::io::Read;
+use std::fs;
+use std::fs::File;
+     
+     #[test]
+     fn test_write_to_file() {
+         let list = gen_random_ab();
+         let filename = "random_ab.txt";
+         write_to_file(filename, &list).unwrap();
+         let contents = fs::read_to_string(filename).unwrap();
+         // loop thru the contents to see if they are a or b
+         for c in contents.chars() {
+             assert!(c == 'a' || c == 'b');
+         }
+     }
+     #[test]
+     fn test_read_file() {
+         let filename = "random_ab.txt";
+         let mut compressed = String::new();
+         read_file(filename, &mut compressed).unwrap();
+         // loop thru the contents to see if they are either a or b or number
+         for c in compressed.chars() {
+             assert!(c == 'a' || c == 'b' || c.is_digit(10));
+         }
+     }
+     #[test]
+     fn test_compress() {
+         let filename = "random_ab.txt";
+         let mut compressed = String::new();
+         read_file(filename, &mut compressed).unwrap();
+         let mut compressed_file = File::create("compressed.txt").unwrap();
+         compressed_file.write_all(compressed.as_bytes()).unwrap();
+     }
+     #[test]
+     fn test_decompress() {
+         let filename = "compressed.txt";
+         let mut decomp_str = String::new();
+         decompress(filename, &mut decomp_str).expect("Error in decompression");
+         for c in decomp_str.chars() {
+             assert!(c == 'a' || c == 'b');
+         }
+         // read file to see if it is the same as decompressed string
+         let mut file = File::open("decompressed.txt").expect("Couldn't open");
+         let mut contents = String::new();
+         file.read_to_string(&mut contents).expect("Couldn't read");
+         assert_eq!(contents, decomp_str);
+     }
+ }

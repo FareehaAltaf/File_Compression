@@ -1,4 +1,4 @@
-
+// mod tests;
 pub mod random{
     use rand::Rng;
     pub fn gen_random_ab() -> Vec<(u32, u32)> { // genereates random numbers, these numbers will eventually be the number of as and bs in the file
